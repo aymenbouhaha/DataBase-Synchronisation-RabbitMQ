@@ -13,7 +13,7 @@ public class DAOService {
     public String user = "root";
     public String password = "";
 
-    public String queryUpdate = "UPDATE product_sale set synchd = 1  where id = ?";
+    public String queryUpdate = "UPDATE product_sale set synchd = 1 , updated=0 where id = ?";
     public DAOService(int DBNumber) {
         this.DBNumber = DBNumber;
         this.url ="jdbc:mysql://localhost:3306/bo"+Integer.toString(DBNumber);
@@ -23,6 +23,7 @@ public class DAOService {
 
         }
     }
+
     public List<Product> getNonSyncedProducts() throws SQLException {
         List<Product> products = new ArrayList<>();
         String queryGet="SELECT * FROM product_sale where synchd = 0";

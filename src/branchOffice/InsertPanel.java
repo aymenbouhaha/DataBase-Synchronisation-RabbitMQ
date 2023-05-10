@@ -8,15 +8,15 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 import static Encommun.Serialize.serialize;
 
@@ -33,6 +33,7 @@ public class InsertPanel extends JPanel{
     public JTextArea textArea;
     public JButton submitBtn;
     public JButton sendButton;
+    public JButton updateButton;
     public ConnectionFactory rabitMqConnectionFactory;
 
     private Connection connection;
@@ -40,6 +41,15 @@ public class InsertPanel extends JPanel{
     DAOService service;
 
     DataTable dataTable;
+    private int selectedRowIndex;
+    private int selectedId;
+    private String selectedRegion;
+    private String selectedProduct;
+    private int selectedQty;
+    private float selectedCost;
+    private double selectedAmt;
+    private float selectedTax;
+    private double selectedTotal;
 
     public InsertPanel( int dbNumber,DataTable dataTable ,ConnectionFactory rabitMqConnectionFactory, DAOService daoService) {
 
@@ -47,6 +57,34 @@ public class InsertPanel extends JPanel{
         this.rabitMqConnectionFactory=rabitMqConnectionFactory;
         this.dataTable=dataTable;
         this.prepraInterface(dbNumber);
+
+        ListSelectionModel selectionModel= dataTable.dataTable.getSelectionModel();
+        selectionModel.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent event) {
+                if (!event.getValueIsAdjusting() && dataTable.dataTable.getSelectedRow() != -1) {
+                    selectedRowIndex=dataTable.dataTable.getSelectedRow();
+                    selectedId=(int) dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 0);
+                    selectedRegion=(String)  dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 2);
+                    selectedProduct=(String)  dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 3);
+                    selectedQty=  Integer.parseInt((String) dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 4));
+                    selectedCost=Float.parseFloat((String)dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 5));
+                    selectedAmt=Double.parseDouble((String)dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 6));
+                    selectedTax=  Float.parseFloat( (String)dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 7));
+                    selectedTotal=  Double.parseDouble( (String) dataTable.dataTable.getValueAt(dataTable.dataTable.getSelectedRow(), 8));
+                    regionTextFld.setText(selectedRegion);
+                    productTextFld.setText(selectedProduct);
+                    quantityTextFld.setText(Integer.toString(selectedQty));
+                    costTextFld.setText(Float.toString(selectedCost));
+                    amtTextFld.setText(Double.toString(selectedAmt));
+                    taxTextFld.setText(Float.toString(selectedTax));
+                    totalTextFld.setText(Double.toString(selectedTotal));
+                    updateButton.setEnabled(true);
+
+
+                }
+            }
+        });
 
     }
 
@@ -85,6 +123,11 @@ public class InsertPanel extends JPanel{
         SendButtonListener sendButtonListener=new SendButtonListener(dbNumber);
         sendButton.addActionListener(sendButtonListener);
 
+        updateButton = new JButton("Update");
+        updateButton.setEnabled(false);
+        UpdateButtonListner updateButtonListener=new UpdateButtonListner(dbNumber);
+        updateButton.addActionListener(updateButtonListener);
+
         textArea = new JTextArea(10, 30);
 
         //add current date
@@ -105,6 +148,7 @@ public class InsertPanel extends JPanel{
         p.add(submitBtn);
         p.add(textArea);
         p.add(sendButton);
+        p.add(updateButton);
         add(p, BorderLayout.NORTH);
         add(textArea, BorderLayout.CENTER);
     }
@@ -151,7 +195,7 @@ public class InsertPanel extends JPanel{
                     + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
             // create the mysql insert preparedstatement
-            PreparedStatement preparedStmt = connection.prepareStatement(query);
+            PreparedStatement preparedStmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             preparedStmt.setDate(1, startDate);
             preparedStmt.setString(2, region);
             preparedStmt.setString(3, product);
@@ -160,11 +204,22 @@ public class InsertPanel extends JPanel{
             preparedStmt.setDouble(6, amt);
             preparedStmt.setFloat(7, tax);
             preparedStmt.setDouble(8, total);
+            int id =0;
 
-            // execute the preparedstatement
-            preparedStmt.execute();
-            Product createdProduct = new Product(startDate,region,product,qty,cost,amt,tax,total,dbNumber);
+            preparedStmt.executeUpdate();
 
+
+            try (ResultSet generatedKeys = preparedStmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    id = (int) generatedKeys.getLong(1);
+                    System.out.println("Last inserted ID: " + id);
+                }
+                else {
+                    throw new SQLException("Insert failed, no ID obtained.");
+                }
+            }
+
+            Product createdProduct = new Product(id,startDate,region,product,qty,cost,amt,tax,total,dbNumber);
             System.out.println(preparedStmt);
 
             connection.close();
@@ -178,7 +233,6 @@ public class InsertPanel extends JPanel{
             totalTextFld.setText("");
             System.out.println("ajout table succes");
             dataTable.addLine(createdProduct);
-            System.out.println("ajout table succes");
 
         } catch (Exception exception){
             exception.printStackTrace();
@@ -203,5 +257,80 @@ public class InsertPanel extends JPanel{
         public void actionPerformed(ActionEvent e){
             rabitMqInteract(dbNumber);
         }
+    }
+
+    public class UpdateButtonListner implements ActionListener {
+        int dbNumber;
+        public UpdateButtonListner(int dbNumber){
+            this.dbNumber=dbNumber;
+        }
+        public void actionPerformed(ActionEvent e){
+            updateButton(dbNumber);
+        }
+    }
+
+    public void updateButton(int dbNumber) {
+        try {
+
+            String url = "jdbc:mysql://localhost:3306/bo"+Integer.toString(dbNumber);
+            String user="root";
+            String password = "";
+            connection = DriverManager.getConnection(url, user, password);
+
+            String region = regionTextFld.getText();
+            String product = productTextFld.getText();
+            int qty = Integer.parseInt(quantityTextFld.getText());
+            float cost = Float.parseFloat(costTextFld.getText());
+            double amt = Double.parseDouble(amtTextFld.getText());
+            float tax = Float.parseFloat(taxTextFld.getText());
+            double total = Double.parseDouble(totalTextFld.getText());
+
+
+            // the mysql insert statement
+            String updateQuery ="UPDATE product_sale set region = ?,product =?,qty=?,cost=?,amt=?,tax=?,total=?, updated=? , synchd=? where id = ?";
+
+            // create the mysql insert preparedstatement
+            PreparedStatement preparedStmt = connection.prepareStatement(updateQuery);
+            preparedStmt.setString(1, region);
+            preparedStmt.setString(2, product);
+            preparedStmt.setInt(3, qty);
+            preparedStmt.setFloat(4, cost);
+            preparedStmt.setDouble(5, amt);
+            preparedStmt.setFloat(6, tax);
+            preparedStmt.setDouble(7, total);
+            preparedStmt.setBoolean(8,true);
+            preparedStmt.setBoolean(9,false);
+            preparedStmt.setInt(10,selectedId );
+
+            preparedStmt.executeUpdate();
+
+
+            connection.close();
+
+            regionTextFld.setText("");
+            productTextFld.setText("");
+            quantityTextFld.setText("");
+            costTextFld.setText("");
+            amtTextFld.setText("");
+            taxTextFld.setText("");
+            totalTextFld.setText("");
+            System.out.println("update table success");
+
+            dataTable.dataTable.setValueAt(region,selectedRowIndex,2);
+            dataTable.dataTable.setValueAt(product,selectedRowIndex,3);
+            dataTable.dataTable.setValueAt(qty,selectedRowIndex,4);
+            dataTable.dataTable.setValueAt(cost,selectedRowIndex,5);
+            dataTable.dataTable.setValueAt(amt,selectedRowIndex,6);
+            dataTable.dataTable.setValueAt(tax,selectedRowIndex,7);
+            dataTable.dataTable.setValueAt(total,selectedRowIndex,8);
+            updateButton.setEnabled(false);
+
+
+
+        } catch (Exception exception){
+            exception.printStackTrace();
+        }
+
+
     }
 }

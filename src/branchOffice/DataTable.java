@@ -4,15 +4,20 @@ package branchOffice;
 import Encommun.Product;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.sql.*;
+import java.util.Date;
 import java.util.List;
 
 public class DataTable{
-    final Object[] column = {"Date","Region","Product","Quantity","Cost","AMT","Tax","Total"};
+    final Object[] column = {"id","Date","Region","Product","Quantity","Cost","AMT","Tax","Total"};
     private JScrollPane scrollPane;
-    private JTable dataTable;
+    public JTable dataTable;
     DefaultTableModel dtm;
+
+
 
     int dbNumber;
     public DataTable(int dbNumber){
@@ -24,9 +29,11 @@ public class DataTable{
         this.scrollPane = new JScrollPane(this.dataTable);
         try {
             this.initTable();
+
         }catch (SQLException sqlException){
 
         }
+
     }
 
     public JScrollPane getScrollPane() {
@@ -35,7 +42,9 @@ public class DataTable{
 
     public void addLines(List<Product> products){
         for (Product p : products){
-            dtm.addRow(new Object[]{p.getDate().toString(),
+            dtm.addRow(new Object[]{
+                    p.getId(),
+                    p.getDate().toString(),
                     p.getRegion(),
                     p.getProduct(),
                     Integer.toString(p.getQty()),
@@ -50,7 +59,9 @@ public class DataTable{
 
 
     public void addLine(Product p){
-        dtm.addRow(new Object[]{p.getDate().toString(),
+        dtm.addRow(new Object[]{
+                p.getId(),
+                p.getDate().toString(),
                 p.getRegion(),
                 p.getProduct(),
                 Integer.toString(p.getQty()),
@@ -66,7 +77,9 @@ public class DataTable{
         DAOService daoService = new DAOService(this.dbNumber);
         List<Product> productList = daoService.getAllData();
         for (Product p : productList){
-            dtm.addRow(new Object[]{p.getDate().toString(),
+            dtm.addRow(new Object[]{
+                    p.getId(),
+                    p.getDate().toString(),
                     p.getRegion(),
                     p.getProduct(),
                     Integer.toString(p.getQty()),

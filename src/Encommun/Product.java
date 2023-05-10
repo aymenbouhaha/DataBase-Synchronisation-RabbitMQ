@@ -2,6 +2,7 @@ package Encommun;
 
 
 import java.util.Date;
+
 public class Product {
     private int id;
     private Date date;
@@ -50,6 +51,23 @@ public class Product {
     }
 
     public Product() {
+    }
+
+    public boolean compareProduct(Product p) {
+//        System.out.println("from compare:" + p.toString());
+        boolean b1=p.getId() == this.id;
+        boolean b2=this.region.equals(p.getRegion());
+        boolean b3=p.getQty() == this.qty;
+        boolean b4=p.getCost() == this.cost;
+        boolean b5=p.getAmt() == this.amt;
+        boolean b6=p.getTax() == this.tax;
+        boolean b7=p.getTotal() == this.total;
+        boolean b8=this.product.equals(p.getProduct());
+        if (b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public int getId() {
@@ -131,6 +149,7 @@ public class Product {
     public void setDbNumber(int dbNumber) {
         this.dbNumber = dbNumber;
     }
+
     public String toString() {
         return "Product{" +
                 "id=" + id +
@@ -142,7 +161,7 @@ public class Product {
                 ", amt=" + amt +
                 ", tax=" + tax +
                 ", total=" + total +
-                ", DB_Number=" + dbNumber+
+                ", DB_Number=" + dbNumber +
                 '}';
     }
 }

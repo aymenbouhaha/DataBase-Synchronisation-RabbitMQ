@@ -7,8 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.TimeoutException;
 
 import com.rabbitmq.client.Channel;
@@ -49,7 +47,6 @@ public class HOdb {
         DeliverCallback deliverCallback = (consumerTag, delivery) -> {
             String receivedMessage = new String(delivery.getBody(), StandardCharsets.UTF_8);
             List<Product> productList = deserialize(receivedMessage);
-            System.out.println(productList);
             List<Product> toInsert = new ArrayList<Product>();
             List<Product> toUpdate = new ArrayList<Product>();
             for(Product p :productList){
@@ -59,6 +56,8 @@ public class HOdb {
                     toInsert.add(p);
             }
             try {
+                System.out.println(toInsert);
+                System.out.println(toUpdate);
                 service.insert(toInsert);
                 service.update(toUpdate);
             } catch (SQLException e) {
@@ -82,29 +81,6 @@ public class HOdb {
             e.printStackTrace();
         }
 
-//        TimerTask task=new TimerTask() {
-//            @Override
-//            public void run() {
-//                System.out.println("HO");
-//                try {
-//                    channel1.basicConsume(QUEUE_NAME + "1",true,deliverCallback,consumerTag -> {
-//                        System.out.println("ERROR");
-//                    });
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//                try {
-//                    channel2.basicConsume(QUEUE_NAME + "2",true,deliverCallback,consumerTag -> {
-//                        System.out.println("ERROR");
-//                    });
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        };
-//
-//        Timer timer = new Timer("Ss");
-//        timer.schedule(task,0, 30*1000);
     }
 
 }
